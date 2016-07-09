@@ -3,10 +3,11 @@
  */
 
 var CLIENT_ID = "bde272e750aa8584833ec1fbd07bda2b";
-var OAUTH_TOKEN = ""
+
+var oauth_token = "no_token";
 
 function get(path, params) {
-  var queryParams = "oauth_token=" + OAUTH_TOKEN;
+  var queryParams = "oauth_token=" + oauth_token;
   for (var param in params) {
     queryParams += "&" + param + "=" + params[param];
   }
@@ -21,7 +22,7 @@ function get(path, params) {
 }
 
 function getRaw(uri) {
-  var queryParams = "oauth_token=" + OAUTH_TOKEN;
+  var queryParams = "oauth_token=" + oauth_token;
   return fetch(uri + "&" + queryParams)
       .then((response) => {
         if (!response.ok) {
@@ -32,7 +33,12 @@ function getRaw(uri) {
       .then((response) => response.json() );
 }
 
+function setToken(token) {
+  oauth_token = token;
+}
+
 module.exports = {
   get: get,
   getRaw: getRaw,
+  setToken: setToken,
 }
