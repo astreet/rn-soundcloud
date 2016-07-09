@@ -77,19 +77,33 @@ class Song extends Component {
 
 class DurationSelector extends Component {
 
+  constructor() {
+    super();
+    this.state = {
+      selection: 0,
+    }
+  }
+
+  componentDidMount() {
+  }
+
   render() {
+    var values = [0, 20 * 60 * 1000, 40 * 60 * 1000];
     var radio_props = [
       {label: ' Any  ', value: 0},
-      {label: ' 20m+ ', value: 20 * 60 * 1000},
-      {label: ' 40m+ ', value: 40 * 60 * 1000},
+      {label: ' 20m+ ', value: 1},
+      {label: ' 40m+ ', value: 2},
     ];
     return (
       <View style={{flex: 1, alignItems: 'center', padding: 10}} key="duration">
         <RadioForm
           radio_props={radio_props}
           formHorizontal={true}
-          initial={0}
-          onPress={(value) => {this.props.onValueChanged && this.props.onValueChanged(value)}}
+          initial={this.state.selection}
+          onPress={(value) => {
+            this.props.onValueChanged && this.props.onValueChanged(values[value]);
+            this.setState({selection: value});
+          }}
         />
       </View>
     );
