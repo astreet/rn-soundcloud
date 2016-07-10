@@ -125,7 +125,7 @@ class SCList extends Component {
   }
 
   componentDidMount() {
-    SC.get('/me/activities', {limit: 5})
+    SC.get('/me/activities', {limit: 10})
       .then(this.handleNewSongsJson.bind(this))
       .done();
   }
@@ -140,22 +140,25 @@ class SCList extends Component {
   }
 
   handleNewSongsJson(json) {
+    var lengthBefore = this.state.songs.length;
     var allSongs = this.state.songs.concat(json.collection);
     var filteredSongs = allSongs
         .filter((song) => song.origin.duration >= this.state.filterDuration);
+    var filteredLength = filteredSongs.length;
+
     this.setState({
       fetchMoreUri: json.next_href,
       songs: allSongs,
       dataSource: this.ds.cloneWithRows(filteredSongs),
     });
+
+    if (lengthBefore === filteredLength) {
+      this.fetchMoreSongs(json.next_href);
+    }
   }
 
-  fetchMoreSongs() {
-    if (!this.state.fetchMoreUri) {
-      return;
-    }
-
-    SC.getRaw(this.state.fetchMoreUri)
+  fetchMoreSongs(fetchMoreUri) {
+    SC.getRaw(fetchMoreUri)
       .then(this.handleNewSongsJson.bind(this))
       .done();
     this.setState({fetchMoreUri: null});
@@ -168,7 +171,7 @@ class SCList extends Component {
         dataSource={this.state.dataSource}
         renderHeader={() => <DurationSelector key="duration" onValueChanged={(value) => this.handleNewDurationFilter(value)}/>}
         renderRow={(song) => <Song song={song.origin}/>}
-        onEndReached={() => this.fetchMoreSongs()}
+        onEndReached={() => { if (this.state.fetchMoreUri) { this.fetchMoreSongs(this.state.fetchMoreUri) }}}
       />
     );
   }
