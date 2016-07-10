@@ -191,7 +191,8 @@ class SoundCloud2 extends Component {
     AsyncStorage.multiGet(['token', 'expires_at'], (err, stores) => {
       var token = stores[0][1];
       var expires_at = stores[1][1];
-      if (!token || (expires_at && expires_at < Date.now())) {
+      console.log("Expires at: " + expires_at + ", now: " + Date.now());
+      if (!token || !expires_at || expires_at < Date.now()) {
         this.setState({
           shouldAuth: true,
         });
@@ -226,7 +227,7 @@ class SoundCloud2 extends Component {
       throw new Error("Couldn't extract expires_in!");
     }
 
-    AsyncStorage.multiSet([['token', token], ['expires_at', Date.now() + expires_in]]);
+    AsyncStorage.multiSet([['token', token], ['expires_at', '' + (Date.now() + 1000 * parseInt(expires_in))]]);
 
     SC.setToken(token);
     this.setState({
