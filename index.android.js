@@ -19,6 +19,7 @@ import {
   WebView,
   DeviceEventEmitter,
   AsyncStorage,
+  ActivityIndicator
 } from 'react-native';
 
 import RadioForm, {RadioButton, RadioButtonInput, RadioButtonLabel} from 'react-native-simple-radio-button';
@@ -40,10 +41,17 @@ function getDurationString(duration) {
   return res;
 }
 
-DeviceEventEmitter.addListener('keyboardWillShow', function(e: Event) {
-  console.log("Got native event! " + JSON.stringify(e));
-});
+function getLikesString(likes) {
+  if (likes < 1000) {
+    return likes;
+  }
 
+  if (likes > 10000) {
+    return "" + Math.floor(likes / 1000) + "k";
+  }
+
+  return "" + ((Math.floor(likes / 100)) / 10) + "k";
+}
 
 class Song extends Component {
   constructor(props) {
@@ -60,14 +68,20 @@ class Song extends Component {
       <TouchableHighlight onPress={() => this.onPress()} underlayColor="#dddddd">
         <View style={styles.song_container}>
           <Image source={{uri: this.props.song.artwork_url ? this.props.song.artwork_url.replace(/large/, 't500x500') : null}} style={styles.song_image}/>
+          <Image source={{uri: this.props.song.user.avatar_url}} style={styles.user_avatar}/>
           <View style={styles.song_title_container}>
             <Text style={[styles.song_title, {fontSize: 20}]}>{this.props.song.title}</Text>
           </View>
-          <View style={[styles.song_title_container, {marginTop: 5}]}>
-            <Text style={styles.song_title}>{getDurationString(this.props.song.duration)}</Text>
+          <View style={{flexDirection: 'row'}}>
+            <View style={[styles.song_title_container, {marginRight: 0}]}>
+              <Text style={styles.song_title}>{this.props.song.user.username}</Text>
+            </View>
+            <View style={styles.song_title_container}>
+              <Text style={styles.song_title}>{getDurationString(this.props.song.duration)}</Text>
+            </View>
           </View>
           <View style={[styles.song_title_container, {marginTop: 5}]}>
-            <Text style={styles.song_title}>{this.props.song.likes_count + ' likes'}</Text>
+            <Text style={styles.song_title}>{getLikesString(this.props.song.likes_count) + ' likes'}</Text>
           </View>
         </View>
       </TouchableHighlight>
@@ -110,6 +124,20 @@ class DurationSelector extends Component {
   }
 }
 
+class LoadingMoreIndicator extends Component {
+  render() {
+    if (this.props.isLoading) {
+      return (
+        <View style={{alignItems: 'center', padding: 20}}>
+          <ActivityIndicator animating={true} />
+        </View>
+      );
+    } else {
+      return null;
+    }
+  }
+}
+
 class SCList extends Component {
 
   constructor(props) {
@@ -121,6 +149,7 @@ class SCList extends Component {
       fetchMoreUri: null,
       dataSource: this.ds.cloneWithRows([]),
       filterDuration: 0,
+      isLoading: false,
     };
   }
 
@@ -128,14 +157,17 @@ class SCList extends Component {
     SC.get('/me/activities', {limit: 10})
       .then(this.handleNewSongsJson.bind(this))
       .done();
+    this.setState({isLoading: true});
   }
 
   handleNewDurationFilter(value) {
-    var filtered = this.state.songs
-        .filter((song) => song.origin.duration >= value);
-    this.setState({
-      dataSource: this.ds.cloneWithRows(filtered),
-      filterDuration: value,
+    requestAnimationFrame(() => {
+      var filtered = this.state.songs
+          .filter((song) => song.origin.duration >= value);
+      this.setState({
+        dataSource: this.ds.cloneWithRows(filtered),
+        filterDuration: value,
+      });
     });
   }
 
@@ -143,7 +175,7 @@ class SCList extends Component {
     var lengthBefore = this.state.songs.length;
     var allSongs = this.state.songs.concat(json.collection);
     var filteredSongs = allSongs
-        .filter((song) => song.origin.duration >= this.state.filterDuration);
+        .filter((song) => song.origin.duration && song.origin.duration >= this.state.filterDuration);
     var filteredLength = filteredSongs.length;
 
     this.setState({
@@ -154,6 +186,8 @@ class SCList extends Component {
 
     if (lengthBefore === filteredLength) {
       this.fetchMoreSongs(json.next_href);
+    } else {
+      this.setState({isLoading: false});
     }
   }
 
@@ -161,7 +195,10 @@ class SCList extends Component {
     SC.getRaw(fetchMoreUri)
       .then(this.handleNewSongsJson.bind(this))
       .done();
-    this.setState({fetchMoreUri: null});
+    this.setState({
+      fetchMoreUri: null,
+      isLoading: true,
+    });
   }
 
   render() {
@@ -170,6 +207,7 @@ class SCList extends Component {
         enableEmptySections={true}
         dataSource={this.state.dataSource}
         renderHeader={() => <DurationSelector key="duration" onValueChanged={(value) => this.handleNewDurationFilter(value)}/>}
+        renderFooter={() => <LoadingMoreIndicator isLoading={this.state.isLoading} />}
         renderRow={(song) => <Song song={song.origin}/>}
         onEndReached={() => { if (this.state.fetchMoreUri) { this.fetchMoreSongs(this.state.fetchMoreUri) }}}
       />
@@ -251,7 +289,10 @@ class SoundCloud2 extends Component {
       return <SCList/>;
     } else {
       return (
-        <View><Text>Checking cache for token...</Text></View>
+        <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
+          <Text style={{fontSize: 28, marginBottom: 30}}>Loading your account...</Text>
+          <ActivityIndicator animating={true} size="large" />
+        </View>
       );
     }
   }
@@ -282,6 +323,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+  },
+  user_avatar: {
+    position: 'absolute',
+    right: 10,
+    bottom: 10,
+    width: 50,
+    height: 50,
+    borderColor: 'white',
+    borderWidth: 2,
   }
 });
 
